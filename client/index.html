@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      src="https://cdn.socket.io/4.3.2/socket.io.min.js"
+      integrity="sha384-KAZ4DtjNhLChOB/hxXuKqhMLYvx3b5MlT55xPEiNmREKRzeEm+RVPlTnAn0ajQNs"
+      crossorigin="anonymous"
+    ></script>
+    <title>G&G Chat</title>
+  </head>
+  <body>
+    <p id="connection-status"></p>
+    <button id="connect-button">Conectar</button>
+
+    <hr />
+
+    <p>Usuários conectados</p>
+    <div id="user-list">Conecte-se para ver os usuários conectados</div>
+
+    <hr />
+
+    <p>Menssagens</p>
+    <div id="messages-container"></div>
+    <textarea
+      name="message"
+      id="message-input"
+      cols="36"
+      rows="6"
+      placeholder="envie uma mensagem"
+    ></textarea>
+    <button id="send-message">Enviar</button>
+
+    <hr />
+
+    <button id="disconnect-button">Desconectar</button>
+
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      html {
+        padding: 16px;
+      }
+
+      hr {
+        margin-top: 24px;
+        margin-bottom: 24px;
+      }
+
+      textarea {
+        margin-top: 12px;
+      }
+
+      #connection-status {
+        background-color: red;
+        color: white;
+      }
+
+      #connection-status.connected {
+        background-color: greenyellow;
+        color: darkgreen;
+      }
+
+      #user-list {
+        display: flex;
+        gap: 8px;
+        color: rgba(0, 0, 0, 60%);
+      }
+
+      #user-list p {
+        background-color: greenyellow;
+        color: darkgreen;
+      }
+
+      #messages-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+      }
+
+      .message {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 16px;
+        padding: 8px;
+        background-color: rgba(0, 0, 0, 10%);
+        width: 70%;
+      }
+
+      .message .username {
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .message .timestamp {
+        font-size: 10px;
+      }
+
+      .message.me {
+        align-self: end;
+        background-color: cornflowerblue;
+        color: white;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+
+    <script>
+      const connectionHeader = document.getElementById('connection-header');
+      const connectionStatus = document.getElementById('connection-status');
+      connectionStatus.innerText = 'Você não está conectado';
+
+      const userList = document.getElementById('user-list');
+
+      const connectButton = document.getElementById('connect-button');
+      const disconnectButton = document.getElementById('disconnect-button');
+      const sendButton = document.getElementById('send-message');
+
+      let socket;
+      let user;
+
+      connectButton.addEventListener('click', () => {
+        socket = io('http://localhost:3000');
+
+        socket.on('connect', () => {
+          connectionStatus.classList.add('connected');
+          connectionStatus.innerText = 'Você está conectado';
+          connectButton.classList.add('hidden');
+
+          const username = prompt('Digite o seu nome de usuário');
+          user = username;
+          socket.emit('username', username);
+        });
+
+        socket.on('users', (users) => {
+          userList.innerHTML = '';
+
+          users.forEach((user) => {
+            const userElement = document.createElement('p');
+            userElement.textContent = user;
+            userList.appendChild(userElement);
+          });
+        });
+
+        socket.on('chat:message', (message) => {
+          const messagesContainer =
+            document.getElementById('messages-container');
+          const messageElement = document.createElement('div');
+          messageElement.classList.add('message');
+
+          if (user === message.sender) {
+            messageElement.classList.add('me');
+          }
+
+          messageElement.innerHTML = `<p class='username'>${message.sender}</p> <p>${message.content}</p> <p class='timestamp'>${message.timestamp}</p>`;
+          messagesContainer.appendChild(messageElement);
+        });
+      });
+
+      disconnectButton.addEventListener('click', () => {
+        socket.disconnect();
+        connectionStatus.classList.remove('connected');
+        connectButton.classList.remove('hidden');
+        connectionStatus.innerText = 'Você não está conectado';
+        userList.innerHTML = 'Conecte-se para ver os usuários conectados';
+      });
+
+      sendButton.addEventListener('click', () => {
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value;
+        socket.emit('chat:message', message);
+        messageInput.value = '';
+      });
+    </script>
+  </body>
+</html>
